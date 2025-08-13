@@ -2,101 +2,86 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Crypto Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Crypto Tracker — Black/Yellow/White</title>
 
-  <!-- React + Babel -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <!-- React + ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    body {
-      background-color: #000;
-      color: white;
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    h1 {
-      color: yellow;
-      text-align: center;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    th, td {
-      border: 1px solid yellow;
-      padding: 8px;
-      text-align: left;
-    }
-    th {
-      background-color: yellow;
-      color: black;
-    }
-    .positive {
-      color: #00ff00;
-    }
-    .negative {
-      color: red;
-    }
+    body { margin:0; background:#0b0b0c; color:#fff; font-family:sans-serif; }
+    .header { background:#121214; padding:12px; text-align:center; font-weight:bold; border-bottom:3px solid #ffd000; }
+    .container { max-width:1200px; margin:20px auto; padding:0 16px; display:grid; grid-template-columns:1fr; gap:16px; }
+    .card { background:#121214; border:1px solid #1f1f22; border-radius:12px; padding:12px; }
+    .table { width:100%; border-collapse:collapse; }
+    .th, .td { padding:8px; border-bottom:1px dashed #1f1f22; text-align:left; }
+    .th { color:#c9c9c9; font-size:13px; text-transform:uppercase; }
+    .chip { padding:2px 6px; border-radius:999px; font-size:12px; }
+    .up { color:#27e08a; border:1px solid rgba(39,224,138,0.35); }
+    .down { color:#ff4d4d; border:1px solid rgba(255,77,77,0.35); }
+    .watch { cursor:pointer; }
   </style>
 </head>
 <body>
-  <h1>Crypto Tracker</h1>
-  <div id="root"></div>
+
+  <div class="header">Crypto Tracker (CoinGecko) - Black/Yellow/White</div>
+  <div class="container" id="app"></div>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
 
     function App() {
-      const [assets, setAssets] = useState([]);
-
-      const fetchData = () => {
-        fetch("https://api.coincap.io/v2/assets")
-          .then(res => res.json())
-          .then(data => setAssets(data.data))
-          .catch(err => console.error("Error fetching data:", err));
-      };
+      const [coins, setCoins] = useState([]);
+      const [loading, setLoading] = useState(true);
 
       useEffect(() => {
+        async function fetchData() {
+          try {
+            const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1');
+            const data = await res.json();
+            setCoins(data);
+            setLoading(false);
+          } catch (e) {
+            console.error('Error fetching data', e);
+          }
+        }
         fetchData();
-        const interval = setInterval(fetchData, 10000);
-        return () => clearInterval(interval);
       }, []);
 
+      if (loading) return <div className="card">Loading...</div>;
+
       return (
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Name</th>
-              <th>Symbol</th>
-              <th>Price (USD)</th>
-              <th>24h Change</th>
-              <th>Market Cap</th>
-            </tr>
-          </thead>
-          <tbody>
-            {assets.map(asset => (
-              <tr key={asset.id}>
-                <td>{asset.rank}</td>
-                <td>{asset.name}</td>
-                <td>{asset.symbol}</td>
-                <td>${parseFloat(asset.priceUsd).toFixed(2)}</td>
-                <td className={parseFloat(asset.changePercent24Hr) >= 0 ? "positive" : "negative"}>
-                  {parseFloat(asset.changePercent24Hr).toFixed(2)}%
-                </td>
-                <td>${(parseFloat(asset.marketCapUsd) / 1e9).toFixed(2)}B</td>
+        <div className="card">
+          <table className="table">
+            <thead>
+              <tr>
+                <th className="th">#</th>
+                <th className="th">Coin</th>
+                <th className="th">Price</th>
+                <th className="th">24h %</th>
+                <th className="th">Market Cap</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {coins.map((c, i) => (
+                <tr key={c.id}>
+                  <td className="td">{i+1}</td>
+                  <td className="td">{c.name} ({c.symbol.toUpperCase()})</td>
+                  <td className="td">${c.current_price.toLocaleString()}</td>
+                  <td className={`td chip ${c.price_change_percentage_24h>=0?'up':'down'}`}>{c.price_change_percentage_24h.toFixed(2)}%</td>
+                  <td className="td">${c.market_cap.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    ReactDOM.render(<App />, document.getElementById('app'));
   </script>
+
 </body>
 </html>
