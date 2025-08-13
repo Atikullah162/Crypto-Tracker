@@ -1,175 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Crypto Tracker — Stylish</title>
-
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Crypto Tracker</title>
 
   <!-- React + ReactDOM -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-  <!-- Recharts -->
-  <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
-
-  <!-- Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body { margin:0; background:#000000; color:#ebebeb; font-family:sans-serif; }
+    .header { background:#2c2c27; padding:12px; text-align:center; font-weight:bold; border-bottom:3px solid #ffd000; }
+    .container { max-width:1200px; margin:20px auto; padding:0 16px; display:grid; grid-template-columns:1fr; gap:16px; }
+    .card { background:#27282c; border:1px solid #1f1f22; border-radius:12px; padding:12px; }
+    .table { width:100%; border-collapse:collapse; }
+    .th, .td { padding:8px; border-bottom:1px dashed #1f1f22; text-align:left; }
+    .th { color:#c9c9c9; font-size:13px; text-transform:uppercase; }
+    .chip { padding:2px 6px; border-radius:999px; font-size:12px; }
+    .up { color:#27e08a; border:1px solid rgba(39,224,138,0.35); }
+    .down { color:#ff4d4d; border:1px solid rgba(255,77,77,0.35); }
+    .watch { cursor:pointer; }
+    input { padding:8px; width:100%; margin-bottom:12px; border-radius:8px; border:1px solid #1f1f22; }
+  </style>
 </head>
-<body class="bg-gray-900 text-gray-100">
+<body>
 
-<main class="max-w-6xl mx-auto p-4">
-  <div id="app"></div>
-  <div id="watchlist" class="mt-6"></div>
-</main>
+  <div class="header">Crypto Tracker</div>
+  <div class="container" id="app"></div>
 
-<script type="text/babel">
-const { useState, useEffect, useMemo } = React;
-const { LineChart, Line, ResponsiveContainer } = Recharts;
+  <script type="text/babel">
+    const { useState, useEffect } = React;
 
-// Use CoinGecko public API (no key needed)
-const API = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true';
+    function App() {
+      const [coins, setCoins] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [search, setSearch] = useState("");
+      const [selectedCoin, setSelectedCoin] = useState(null);
+      const [coinDetails, setCoinDetails] = useState(null);
 
-function formatUSD(n) {
-  const v = Number(n);
-  if (!isFinite(v)) return '-';
-  return v >= 1 ? v.toLocaleString(undefined, { style:'currency', currency:'USD', maximumFractionDigits:2 })
-                : v.toLocaleString(undefined, { style:'currency', currency:'USD', maximumFractionDigits:6 });
-}
+      useEffect(() => {
+        async function fetchData() {
+          try {
+            const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1');
+            const data = await res.json();
+            setCoins(data);
+            setLoading(false);
+          } catch (e) {
+            console.error('Error fetching data', e);
+          }
+        }
+        fetchData();
+      }, []);
 
-function Sparkline({ data }) {
-  const prices = data?.sparkline_in_7d?.price?.slice(-24) ?? [];
-  if (!prices.length) return null;
-  const first = prices[0], last = prices[prices.length-1];
-  const up = last >= first;
-  const chartData = prices.map(p => ({ p }));
-  return (
-    <div style={{ width: 120, height: 32 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData}>
-          <Line type="monotone" dataKey="p" dot={false} strokeWidth={2} stroke={up ? '#34d399' : '#f87171'} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function App() {
-  const [coins, setCoins] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [watchlist, setWatchlist] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('watchlist')) || []; } catch { return []; }
-  });
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const res = await fetch(API);
-        const data = await res.json();
-        setCoins(data);
-      } catch (err) {
-        console.error('Error fetching data', err);
-      } finally {
-        setLoading(false);
+      const fetchCoinDetails = async (id) => {
+        try {
+          const res = await fetch(`https://api.coingecko.com/api/v3/coins/${id}`);
+          const data = await res.json();
+          setCoinDetails(data);
+        } catch (e) {
+          console.error('Error fetching coin details', e);
+        }
       }
-    }
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
-  useEffect(() => {
-    localStorage.setItem('watchlist', JSON.stringify(watchlist));
-  }, [watchlist]);
+      const filteredCoins = coins.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.symbol.toLowerCase().includes(search.toLowerCase()));
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return coins.filter(c => c.name.toLowerCase().includes(q) || c.symbol.toLowerCase().includes(q));
-  }, [coins, search]);
+      if (loading) return <div className="card">Loading...</div>;
 
-  const toggleWatch = coin => {
-    setWatchlist(prev => prev.some(c => c.id === coin.id) 
-      ? prev.filter(c => c.id !== coin.id) 
-      : [...prev, coin]);
-  };
-
-  if (loading) return <div className="text-center text-gray-400 mt-20">Loading coins…</div>;
-
-  return (
-    <div>
-      <div className="flex mb-4">
-        <input 
-          type="text" 
-          placeholder="Search by name or symbol" 
-          className="flex-1 p-2 rounded-md text-gray-900" 
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
-          <h2 className="text-lg font-bold mb-2">Top Coins</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="border-b border-gray-600">
+      return (
+        <div>
+          <div className="card">
+            <input
+              type="text"
+              placeholder="Search coin..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <table className="table">
+              <thead>
                 <tr>
-                  <th className="px-2 py-1">#</th>
-                  <th className="px-2 py-1">Name</th>
-                  <th className="px-2 py-1">Price</th>
-                  <th className="px-2 py-1">24h</th>
-                  <th className="px-2 py-1">Spark</th>
-                  <th className="px-2 py-1">⭐</th>
+                  <th className="th">#</th>
+                  <th className="th">Coin</th>
+                  <th className="th">Price</th>
+                  <th className="th">24h %</th>
+                  <th className="th">Market Cap</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c, i) => {
-                  const up = c.price_change_percentage_24h >= 0;
-                  const inWatch = watchlist.some(w => w.id === c.id);
-                  return (
-                    <tr key={c.id} className="hover:bg-gray-700 transition">
-                      <td className="px-2 py-1">{i+1}</td>
-                      <td className="px-2 py-1 flex items-center gap-2">
-                        <img src={c.image} alt="" className="w-6 h-6 rounded-full" />
-                        {c.name} <span className="text-gray-400 uppercase text-xs">{c.symbol}</span>
-                      </td>
-                      <td className="px-2 py-1">{formatUSD(c.current_price)}</td>
-                      <td className={`px-2 py-1 ${up ? 'text-green-400' : 'text-red-400'}`}>
-                        {up ? '▲' : '▼'} {Math.abs(c.price_change_percentage_24h).toFixed(2)}%
-                      </td>
-                      <td className="px-2 py-1"><Sparkline data={c} /></td>
-                      <td className="px-2 py-1 cursor-pointer" onClick={() => toggleWatch(c)}>
-                        {inWatch ? '⭐' : '☆'}
-                      </td>
-                    </tr>
-                  )
-                })}
+                {filteredCoins.map((c, i) => (
+                  <tr key={c.id} className="watch" onClick={() => { setSelectedCoin(c); fetchCoinDetails(c.id); }}>
+                    <td className="td">{i+1}</td>
+                    <td className="td">{c.name} ({c.symbol.toUpperCase()})</td>
+                    <td className="td">${c.current_price.toLocaleString()}</td>
+                    <td className={`td chip ${c.price_change_percentage_24h>=0?'up':'down'}`}>
+                      {c.price_change_percentage_24h.toFixed(2)}%
+                    </td>
+                    <td className="td">${c.market_cap.toLocaleString()}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-        </div>
 
-        <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
-          <h2 className="text-lg font-bold mb-2">Watchlist</h2>
-          {watchlist.length === 0 
-            ? <p className="text-gray-400">Add coins by clicking ⭐</p>
-            : watchlist.map(c => (
-              <div key={c.id} className="flex justify-between items-center mb-2 p-2 bg-gray-700 rounded-md">
-                <span>{c.name} ({c.symbol.toUpperCase()})</span>
-                <span>{formatUSD(c.current_price)}</span>
+          {selectedCoin && coinDetails && (
+            <div style={{
+              position:"fixed", top:0, left:0, width:"100%", height:"100%", background:"rgba(0,0,0,0.7)",
+              display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000
+            }}>
+              <div style={{background:"#212125", padding:"20px", borderRadius:"12px", maxWidth:"500px", width:"90%", color:"#ffe8e8"}}>
+                <button onClick={() => { setSelectedCoin(null); setCoinDetails(null); }} style={{float:"right", background:"none", border:"none", color:"#ff4d4d", fontSize:"18px", cursor:"pointer"}}>×</button>
+                <div style={{textAlign:"center"}}>
+                  <img src={coinDetails.image.large} alt={coinDetails.name} style={{width:"64px", height:"64px"}} />
+                  <h2>{coinDetails.name} ({coinDetails.symbol.toUpperCase()})</h2>
+                  <p>Price: ${coinDetails.market_data.current_price.usd.toLocaleString()}</p>
+                  <p>24h Change: <span className={coinDetails.market_data.price_change_percentage_24h>=0?'up':'down'}>
+                    {coinDetails.market_data.price_change_percentage_24h.toFixed(2)}%
+                  </span></p>
+                  <p>Market Cap: ${coinDetails.market_data.market_cap.usd.toLocaleString()}</p>
+                  <p style={{marginTop:"12px", fontSize:"14px"}} dangerouslySetInnerHTML={{__html: coinDetails.description.en.split('. ')[0]+'.'}}></p>
+                </div>
               </div>
-            ))
-          }
+            </div>
+          )}
         </div>
-      </div>
-    </div>
-  );
-}
+      );
+    }
 
-ReactDOM.render(<App />, document.getElementById('app'));
-</script>
+    ReactDOM.render(<App />, document.getElementById('app'));
+  </script>
 
 </body>
 </html>
