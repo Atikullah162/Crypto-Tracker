@@ -11,23 +11,26 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    body { margin:0; background:#000000; color:#ebebeb; font-family:sans-serif; }
-    .header { background:#2c2c27; padding:12px; text-align:center; font-weight:bold; border-bottom:3px solid #ffd000; }
-    .container { max-width:1200px; margin:20px auto; padding:0 16px; display:grid; grid-template-columns:1fr; gap:16px; }
-    .card { background:#27282c; border:1px solid #1f1f22; border-radius:12px; padding:12px; }
-    .table { width:100%; border-collapse:collapse; }
+    body { margin:0; background:#000000; color:#ffffff; font-family:sans-serif; }
+    .header { background:#212125; padding:12px; text-align:center; font-weight:bold; border-bottom:3px solid #ffd000; }
+    .container { max-width:1200px; margin:20px auto; padding:0 16px; display:grid; gap:16px; }
+    .card { background:#0a0a2e; border:1px solid #1f1f22; border-radius:12px; padding:16px; overflow-x:auto; }
+    .table { width:100%; border-collapse:collapse; min-width:600px; }
     .th, .td { padding:8px; border-bottom:1px dashed #1f1f22; text-align:left; }
     .th { color:#c9c9c9; font-size:13px; text-transform:uppercase; }
     .chip { padding:2px 6px; border-radius:999px; font-size:12px; }
     .up { color:#27e08a; border:1px solid rgba(39,224,138,0.35); }
     .down { color:#ff4d4d; border:1px solid rgba(255,77,77,0.35); }
     .watch { cursor:pointer; }
-    input { padding:8px; width:100%; margin-bottom:12px; border-radius:8px; border:1px solid #1f1f22; }
+    input { padding:8px; width:100%; margin-bottom:12px; border-radius:8px; border:1px solid #1f1f22; font-size:14px; box-sizing:border-box; }
+    @media (max-width:768px) {
+      .th, .td { font-size:12px; padding:6px; }
+    }
   </style>
 </head>
 <body>
 
-  <div class="header">Crypto Tracker</div>
+  <div class="header"><h1>Crypto Tracker</h1></div>
   <div class="container" id="app"></div>
 
   <script type="text/babel">
@@ -69,39 +72,37 @@
       if (loading) return <div className="card">Loading...</div>;
 
       return (
-        <div>
-          <div className="card">
-            <input
-              type="text"
-              placeholder="Search coin..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <table className="table">
-              <thead>
-                <tr>
-                  <th className="th">#</th>
-                  <th className="th">Coin</th>
-                  <th className="th">Price</th>
-                  <th className="th">24h %</th>
-                  <th className="th">Market Cap</th>
+        <div className="card">
+          <input
+            type="text"
+            placeholder="Search coin..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <table className="table">
+            <thead>
+              <tr>
+                <th className="th">#</th>
+                <th className="th">Coin</th>
+                <th className="th">Price</th>
+                <th className="th">24h %</th>
+                <th className="th">Market Cap</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCoins.map((c, i) => (
+                <tr key={c.id} className="watch" onClick={() => { setSelectedCoin(c); fetchCoinDetails(c.id); }}>
+                  <td className="td">{i+1}</td>
+                  <td className="td">{c.name} ({c.symbol.toUpperCase()})</td>
+                  <td className="td">${c.current_price.toLocaleString()}</td>
+                  <td className={`td chip ${c.price_change_percentage_24h>=0?'up':'down'}`}>
+                    {c.price_change_percentage_24h.toFixed(2)}%
+                  </td>
+                  <td className="td">${c.market_cap.toLocaleString()}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredCoins.map((c, i) => (
-                  <tr key={c.id} className="watch" onClick={() => { setSelectedCoin(c); fetchCoinDetails(c.id); }}>
-                    <td className="td">{i+1}</td>
-                    <td className="td">{c.name} ({c.symbol.toUpperCase()})</td>
-                    <td className="td">${c.current_price.toLocaleString()}</td>
-                    <td className={`td chip ${c.price_change_percentage_24h>=0?'up':'down'}`}>
-                      {c.price_change_percentage_24h.toFixed(2)}%
-                    </td>
-                    <td className="td">${c.market_cap.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
 
           {selectedCoin && coinDetails && (
             <div style={{
