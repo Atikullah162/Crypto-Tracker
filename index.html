@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Crypto Tracker</title>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <style>
+    body {
+      background-color: #000;
+      color: white;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      color: yellow;
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid yellow;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: yellow;
+      color: black;
+    }
+    .positive {
+      color: #00ff00;
+    }
+    .negative {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>Crypto Tracker</h1>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function App() {
+      const [assets, setAssets] = useState([]);
+
+      const fetchData = () => {
+        fetch("https://api.coincap.io/v2/assets")
+          .then(res => res.json())
+          .then(data => setAssets(data.data))
+          .catch(err => console.error("Error fetching data:", err));
+      };
+
+      useEffect(() => {
+        fetchData();
+        const interval = setInterval(fetchData, 10000);
+        return () => clearInterval(interval);
+      }, []);
+
+      return (
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Name</th>
+              <th>Symbol</th>
+              <th>Price (USD)</th>
+              <th>24h Change</th>
+              <th>Market Cap</th>
+            </tr>
+          </thead>
+          <tbody>
+            {assets.map(asset => (
+              <tr key={asset.id}>
+                <td>{asset.rank}</td>
+                <td>{asset.name}</td>
+                <td>{asset.symbol}</td>
+                <td>${parseFloat(asset.priceUsd).toFixed(2)}</td>
+                <td className={parseFloat(asset.changePercent24Hr) >= 0 ? "positive" : "negative"}>
+                  {parseFloat(asset.changePercent24Hr).toFixed(2)}%
+                </td>
+                <td>${(parseFloat(asset.marketCapUsd) / 1e9).toFixed(2)}B</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
